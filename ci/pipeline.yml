@@ -1,0 +1,60 @@
+---
+
+jobs:
+- name: ship-it
+  serial: true
+  public: true
+  plan:
+  - aggregate:
+    - get: docker-alpine
+      trigger: true
+      params:
+        skip_download: true
+    - get: docker-alpine-gboot
+      trigger: true
+    trigger: true
+  - put: version
+    params: {bump: minor}
+  - put: release-image
+    params:
+      build: docker-alpine-gboot
+      tag_as_latest: true
+      tag: version/number
+  - put: docker-alpine-gboot
+    params:
+      only_tag: true
+      repository: docker-alpine-gboot
+      tag: version/number
+
+resources:
+
+- name: docker-alpine
+  type: docker-image
+  source:
+    repository: sbodiu/gboot
+
+- name: docker-alpine-gboot
+  type: git
+  source:
+    uri: git@github.com:sergiubodiu/docker-alpine-gboot.git
+    branch: master
+    paths: [Dockerfile]
+    private_key: {{private-key-github-concourse}}
+
+- name: release-image
+  type: docker-image
+  source:
+    repository: sbodiu/gboot
+    email: {{docker-email}}
+    username: {{docker-username}}
+    password: {{docker-password}}
+
+- name: version
+  type: semver
+  source:
+    driver: git
+    uri: git@github.com:sergiubodiu/version-concourse.git
+    branch: master
+    file: docker-alpine-gboot/version
+    private_key: {{private-key-github-concourse}}
+    git_user: "Sergiu <sbodiu@pivotal.io>"
